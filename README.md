@@ -8,7 +8,7 @@
 
   
 
-  ![](https://devyk.oss-cn-qingdao.aliyuncs.com/blog/20200505002223.gif)
+  ![](https://devyk.oss-cn-qingdao.aliyuncs.com/blog/20200505195250.gif)
 
   
 
@@ -24,7 +24,11 @@
 | 声道切换                                                     | Yes      |
 | [变调变速]([SoundTouch](https://gitlab.com/soundtouch/soundtouch)) | Yes      |
 | 变声                                                         |          |
-| 裁剪音频保存输出 MP3/PCM 等格式                              |          |
+| 裁剪音频输出 MP3/PCM 等格式                                  | Pcm-ok   |
+| 边播边录制                                                   |          |
+| 音频编码为 AAC、MP3、WAV                                     |          |
+|                                                              |          |
+|                                                              |          |
 
 
 

@@ -11,12 +11,27 @@ Native2JavaCallback::Native2JavaCallback(JavaVM *vm, JNIEnv *env, jobject *jobj)
 //    this->jobj = *jobj;
     this->jobj = env->NewGlobalRef(*jobj);
     jclass jcls = jniEnv->GetObjectClass(this->jobj);
+    //准备播放
     this->jmid_parpared = this->jniEnv->GetMethodID(jcls, "onCallParpared", "()V");
-    this->jmid_stop = this->jniEnv->GetMethodID(jcls, "onStop", "()V");
-    this->jmid_release = this->jniEnv->GetMethodID(jcls, "onRelease", "()V");
+    //开始播放
     this->jmid_play = this->jniEnv->GetMethodID(jcls, "onPlay", "()V");
+    //暂停播放
+    this->jmid_onPause = this->jniEnv->GetMethodID(jcls, "onPause", "()V");
+    //播放完成
+    this->jmid_onComplete = this->jniEnv->GetMethodID(jcls, "onComplete", "()V");
+    //释放成功
+    this->jmid_release = this->jniEnv->GetMethodID(jcls, "onRelease", "()V");
+    //播放出错
     this->jmid_error = this->jniEnv->GetMethodID(jcls, "onError", "(I)V");
+
+    //截取回调
+    this->jmid_cut_pcm = this->jniEnv->GetMethodID(jcls, "onCutPcmData", "([BIII)V");
+    this->jmid_cut_start = this->jniEnv->GetMethodID(jcls, "onCutStart", "()V");
+    this->jmid_cut_onComplete = this->jniEnv->GetMethodID(jcls, "onCutComplete", "()V");
+
+    //播放时间回调
     this->jmid_timeInfo = this->jniEnv->GetMethodID(jcls, "onCallTimeInfo", "(II)V");
+    //播放分贝回调
     this->jmid_voiceDBInfo = this->jniEnv->GetMethodID(jcls, "onVoiceDBInfo", "(I)V");
 }
 
@@ -45,8 +60,8 @@ void Native2JavaCallback::onPlay(int threadType) {
 /**
  * 停止播放的回调
  */
-void Native2JavaCallback::onStop(int threadType) {
-    toJavaMethod(threadType, this->jmid_stop, 0);
+void Native2JavaCallback::onComplete(int threadType) {
+    toJavaMethod(threadType, this->jmid_onComplete, 0);
 }
 
 /**
@@ -114,7 +129,7 @@ void Native2JavaCallback::toJavaMethod(int threadType, jmethodID jmetId, int cou
         va_start(ap, jmetId);//初始化，第二个参数为最后一个确定的形参
         int *p = new int[count];
         for (int i = 0; i < count; i++) {
-            p[i] = va_arg(ap, int);; //读取可变参数，的二个参数为可变参数的类型
+            p[i] = va_arg(ap, int); //读取可变参数，的二个参数为可变参数的类型
         }
         va_end(ap);
         switch (count) {
@@ -130,5 +145,51 @@ void Native2JavaCallback::toJavaMethod(int threadType, jmethodID jmetId, int cou
         }
     }
 }
+
+/**
+ * 将 截取到的 PCM 返回给 Java 层
+ * @param buffer
+ * @param pcmSize
+ * @param sampleRate
+ * @param channel
+ * @param bit
+ */
+void Native2JavaCallback::onCutAudioPCMData(uint8_t *buffer, int pcmSize, int sampleRate, int channel, int bit) {
+    if (pcmSize <= 0) {
+        return;
+    }
+
+    JNIEnv *env;
+    if (this->javaVM->AttachCurrentThread(&env, 0) != JNI_OK) {
+        LOGE("toJavaMethod", "AttachCurrentThread error");
+        return;
+    }
+    jbyteArray pcmArray = env->NewByteArray(pcmSize);
+    env->SetByteArrayRegion(pcmArray, 0, pcmSize, reinterpret_cast<const jbyte *>(buffer));
+    env->CallVoidMethod(this->jobj, this->jmid_cut_pcm, pcmArray, sampleRate, channel, bit);
+    env->DeleteLocalRef(pcmArray);
+    if (this->javaVM->DetachCurrentThread() != JNI_OK) {
+        LOGE("DetachCurrentThread error");
+    }
+}
+
+
+/**
+ * 开始截取
+ * @param threadMode
+ */
+void Native2JavaCallback::onCutStart(int threadMode) {
+    toJavaMethod(threadMode, this->jmid_cut_start, 0);
+}
+
+/**
+ * 截取完成
+ * @param threadMode
+ */
+void Native2JavaCallback::onCutComplete(int threadMode) {
+    toJavaMethod(threadMode, this->jmid_cut_onComplete, 0);
+}
+
+
 
 

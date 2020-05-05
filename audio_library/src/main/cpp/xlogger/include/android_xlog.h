@@ -17,6 +17,9 @@
 
 #define TRINITY_TAG "Native--->AudioManager-->"
 
+//是否打印日志
+#define LOG_DEBUG false
+
 /*
  * Android log priority values, in ascending priority order.
  */
@@ -66,6 +69,7 @@ static void __ComLog(int level, const char *tag, const char *file, const char *f
 #define LOGD(FMT, ...)  __LOG__(kLevelDebug, TRINITY_TAG, FMT, ##__VA_ARGS__)
 #define LOGI(FMT, ...)  __LOG__(kLevelInfo, TRINITY_TAG, FMT, ##__VA_ARGS__)
 #define LOGW(FMT, ...)  __LOG__(kLevelWarn, TRINITY_TAG, FMT, ##__VA_ARGS__)
+
 #define LOGE(FMT, ...)  __LOG__(kLevelError, TRINITY_TAG, FMT, ##__VA_ARGS__)
 
 #define __android_log_print(PRIO, TAG, FMT, ...) __LOG__((TLogLevel)(PRIO-2), TAG , FMT, ##__VA_ARGS__)
@@ -76,6 +80,7 @@ static void __ComLog(int level, const char *tag, const char *file, const char *f
                                                     {0, 0}, -1, -1, -1};\
                                                     gettimeofday(&info.timeval, NULL);\
                                                     xlogger_AssertP(&info, #COND, FMT, ##__VA_ARGS__);}
+
 
 #endif
 

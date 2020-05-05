@@ -35,7 +35,6 @@ static jstring Android_JNI_ffmpegVersion(JNIEnv *jniEnv, jobject jobject1) {
  */
 static void Android_JNI_prepare(JNIEnv *jniEnv, jobject jobject1, jstring sorce) {
     const char *url = jniEnv->GetStringUTFChars(sorce, 0);
-
     if (!mAudioControlManager) {
         mAudioControlManager = new AudioControlManager(url, jniEnv, jobject1);
         mAudioControlManager->javaVM = javaVM;
@@ -85,13 +84,12 @@ static void Android_JNI_resume(JNIEnv *jniEnv, jobject jobject1) {
  */
 static void Android_JNI_stop(JNIEnv *jniEnv, jobject jobject1) {
     if (mAudioControlManager) {
-        LOGE("开始释放编解码器 1");
+        LOGE("开始释放编解码器 Android_JNI_stop");
         mAudioControlManager->releaseThread();
         delete (mAudioControlManager);
         mAudioControlManager = NULL;
         LOGE("开始释放编解码器 通知 JAVA 层");
     }
-
 }
 
 /**
@@ -138,7 +136,6 @@ static void Android_JNI_setVolumePercent(JNIEnv *jniEnv, jobject jobject1, jint 
  * @return
  */
 static jint Android_JNI_getDuration(JNIEnv *jniEnv, jobject jobject1) {
-
     if (mAudioControlManager)
         return mAudioControlManager->getDuration();
     return 0;
@@ -180,6 +177,20 @@ static void Android_JNI_setSpeed(JNIEnv *jniEnv, jobject jobject1, jfloat speed,
     }
 }
 
+/**
+ * 设置播放倍速
+ * @param startTime
+ * @param endTime
+ * @param speed
+ * @param isPlayer
+ */
+static void Android_JNI_cutAudioPcm(JNIEnv *jniEnv, jobject jobject1, jfloat speed, jint startTime, jint endTime,
+                         jboolean isPlayer) {
+    if (mAudioControlManager) {
+        mAudioControlManager->cutAudio2Pcm(startTime, endTime,isPlayer);
+    }
+}
+
 static JNINativeMethod mNativeMethods[] = {
         {"nativeFFmpegVersions", "()Ljava/lang/String;",  (void **) Android_JNI_ffmpegVersion},
         {"prepare",              "(Ljava/lang/String;)V", (void **) Android_JNI_prepare},
@@ -193,6 +204,7 @@ static JNINativeMethod mNativeMethods[] = {
         {"setChannel",           "(I)V",                  (void **) Android_JNI_setChannel},
         {"getChannelMode",       "()I",                   (void **) Android_JNI_getChannelMode},
         {"setSpeed",             "(FZ)V",                 (void **) Android_JNI_setSpeed},
+        {"cutAudio2Pcm",         "(IIZ)V",                (void **) Android_JNI_cutAudioPcm},
         {"resume",               "()V",                   (void **) Android_JNI_resume}
 };
 
@@ -200,14 +212,11 @@ static JNINativeMethod mNativeMethods[] = {
 JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *pVoid) {
     JNIEnv *jniEnv;
     javaVM = vm;
-
     if (vm->GetEnv(reinterpret_cast<void **>(&jniEnv), JNI_VERSION_1_6) != JNI_OK)
         return JNI_ERR;
-
     jclass nativeMethodClass = jniEnv->FindClass(NATIVE_METHODS_PATH);
     jniEnv->RegisterNatives(nativeMethodClass, mNativeMethods, NELEM(mNativeMethods));
     jniEnv->DeleteLocalRef(nativeMethodClass);
-
 
     return JNI_VERSION_1_6;
 }

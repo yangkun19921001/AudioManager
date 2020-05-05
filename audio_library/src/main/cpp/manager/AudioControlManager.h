@@ -18,12 +18,11 @@ public:
 
 
     AudioDecodec *mAudioDecodec = NULL;
-    Native2JavaCallback *mCallback = NULL;
+
     _JavaVM *javaVM = NULL;
     JNIEnv *jniEnv = NULL;
     jobject jobj;
-    //全局执行的循环任务退出
-    Status *mStatus = NULL;
+
     //播放 PCM 类
     AudioPlayer *mAudioPlayer = NULL;
 
@@ -62,6 +61,8 @@ public:
     void setSpeed(float speed, bool isPitch);
 
     pthread_mutex_t release_mutex;
+
+    void cutAudio2Pcm(jint startTime, jint endTime, jboolean isPlayer);
 };
 
 

@@ -95,13 +95,13 @@ void AudioDecodec::decodeInit() {
     this->initResult = ret;
     switch (ret) {
         case 1://初始化成功
-            LOGE("AUDIO-DECODEC is ok %d", ret);
+            LOGE("AudioDecodec decodeInit is ok %d", ret);
             break;
         case -1://异常终止程序
-            LOGE("AUDIO-DECODEC  强制终止 %d", ret);
+            LOGE("AudioDecodec  decodeInit 强制终止 %d", ret);
             break;
         default:
-            LOGE("AUDIO-DECODEC  error %d", ret);
+            LOGE("AudioDecodec  decodeInit error %d", ret);
             break;
     }
 }
@@ -132,13 +132,13 @@ void AudioDecodec::readDecodeData() {
             av_usleep(1000 * 100);
             continue;
         }
+
         if (this->avPacketQueue.queueSize() > 100) {
             av_usleep(1000 * 100);
             continue;
         }
 
         if (!avFormatContext) {
-            LOGE("AUDIO-DECODEC avFormatContext");
             pthread_mutex_unlock(&seek_mutex);
             //读取线程可以安全退出
             this->status->isReadFrameThreadExit = true;
@@ -146,36 +146,47 @@ void AudioDecodec::readDecodeData() {
         }
 
         AVPacket *avPacket = getAVPacket();
-
         pthread_mutex_lock(&seek_mutex);
         ret = readFrame(&this->avFormatContext, &avPacket);
         pthread_mutex_unlock(&seek_mutex);
+
+        if (status->isCut) {
+            //计算显示的时间 当前时间
+            int readCurAudioTime = avPacket->pts * av_q2d(time_base);
+            if (readCurAudioTime == this->cut_startTime) {
+                //LOGE("cut read 读取开始帧：%d", readCurAudioTime);
+            }
+
+            if (readCurAudioTime > this->cut_endTime) {//将结束的音频也包含进去
+                LOGE("cut read 读取结束帧：%d", readCurAudioTime);
+//                break;这里不能这样结束，会导致下游一直处理等待阻塞
+            }
+        }
+
 
         if (ret == 0) {
             if (avPacket->stream_index == this->audioStreamIndex) {
                 this->avPacketQueue.push(avPacket);
             } else {
-                LOGE("AUDIO-DECODEC 不是语音流");
+                LOGE("readDecodeData 不是语音流");
                 releasePacket(&avPacket);
             }
         } else {//代表读取完了,或者读取失败了，这里统一就不在多加判断条件了，直接一个 else 解决
-
-            LOGE("AUDIO-DECODEC 代表读取完了");
+            LOGE("readDecodeData 代表读取完了");
             releasePacket(&avPacket);
             if (checkIsExit() && status && !this->status->exit) {
-                LOGE("AUDIO-DECODEC 可以执行退出");
+                LOGE("readDecodeData 可以执行退出");
                 //读取线程可以安全退出
                 this->status->isReadFrameThreadExit = true;
                 break;
             }
         }
-
     }
     //读取线程可以安全退出
     this->status->isReadFrameThreadExit = true;
     //再次释放锁资源
     pthread_mutex_unlock(&seek_mutex);
-    LOGE("AUDIO-DECODEC 数据已读取完毕或者强制退出");
+    LOGE("readDecodeData 数据已读取完毕或者强制退出");
 }
 
 
@@ -191,12 +202,12 @@ void AudioDecodec::startDecode() {
             av_usleep(1000 * 100);
             continue;
         }
-        if (avPacketQueue.queueSize() ==0) {
-            av_usleep(1000 * 100);
-            continue;
-        }
+//        if (avPacketQueue.queueSize() == 0) {
+//            av_usleep(1000 * 100);
+//            continue;
+//        }
         //1. 拿到一个 AVPacket
-         AVPacket *avPacket = getAVPacket();
+        AVPacket *avPacket = getAVPacket();
         int ret = avPacketQueue.pop(avPacket);
         if (!ret) {
             releasePacket(&avPacket);
@@ -205,7 +216,7 @@ void AudioDecodec::startDecode() {
         //2. 说明拿到了待解码数据,送入解码器
         ret = sendPacket2Codec(&this->avCodecContext, avPacket);
         if (ret != 0) {
-            LOGE("AUDIO-DECODEC---> avcodec_send_packet ---> error :%d", ret);
+            LOGE("startDecode---> avcodec_send_packet ---> error :%d", ret);
             releasePacket(&avPacket);
             continue;
         }
@@ -213,7 +224,7 @@ void AudioDecodec::startDecode() {
         AVFrame *avFrame = getAVFrame();
         ret = receiveDecodec2AVFrame(&this->avCodecContext, &avFrame);
         if (ret != 0) {
-            LOGE("AUDIO-DECODEC---> avcodec_receive_frame ---> error :%d", ret);
+            LOGE("startDecode---> avcodec_receive_frame ---> error :%d", ret);
             releasePacket(&avPacket);
             releaseFrame(&avFrame);
             continue;
@@ -247,7 +258,7 @@ void AudioDecodec::startDecode() {
         //4.3 初始化 转换上下文
         ret = swrInit(&swrContext);
         if (!swrContext || ret < 0) {//代表转换失败
-            LOGE("AUDIO-DECODEC---> swrAllocSetOpts or  swrInit ---> error :%d", ret);
+            LOGE("startDecode---> swrAllocSetOpts or  swrInit ---> error :%d", ret);
             releasePacket(&avPacket);
             releaseFrame(&avFrame);
             continue;
@@ -270,7 +281,7 @@ void AudioDecodec::startDecode() {
             releasePacket(&avPacket);
             releaseFrame(&avFrame);
             releaseSwrContext(&swrContext);
-            LOGE("AUDIO-DECODEC---> swrConvert ---> error :%d", ret);
+            LOGE("startDecode---> swrConvert ---> error :%d", ret);
             continue;
         }
 
@@ -279,10 +290,37 @@ void AudioDecodec::startDecode() {
         //计算显示的时间
         int now_time = 0;
         now_time = avFrame->pts * av_q2d(time_base);
+
+        /**
+        * 开始进行裁剪
+        */
+        if (status->isCut) {
+            //计算显示的时间 当前时间
+            if (now_time == this->cut_startTime && !this->startCutTag) {
+                LOGE("cut decode 解码开始帧：%d", now_time);
+                this->startCutTag = 1;
+                this->endCutTag = 0;
+                this->callback->onCutStart(CHILD_THREAD);
+            }
+
+            if (now_time > this->cut_endTime && !this->endCutTag) {
+                LOGE("cut decode 解码结束帧：%d", now_time);
+                this->status->isCut = false;
+                this->status->isCutPlayer = true;
+                this->endCutTag = 1;
+                this->startCutTag = 0;
+                this->callback->onCutComplete(CHILD_THREAD);
+                //释放
+                releasePacket(&avPacket);
+                releaseFrame(&avFrame);
+                releaseSwrContext(&swrContext);
+                avPacketQueue.clearQueue();
+                break;//截取完成，可以退出
+            }
+        }
         //4.5 将解码完成后的 PCM 数据回调给需要处
         if (this->decodecFrameCallback) {
-            decodecFrameCallback(now_time, pcm_out_size, out_buffers, ret);
-
+            decodecFrameCallback(now_time, pcm_out_size, out_buffers, ret, out_sample_rate, out_channels, 16);
         }
         //释放
         releasePacket(&avPacket);
@@ -294,21 +332,16 @@ void AudioDecodec::startDecode() {
 
     //解码线程可以安全退出
     this->status->isDecodecFrameThreadExit = true;
-    LOGE("AUDIO-DECODEC---> 解码退出");
+    LOGE("startDecode---> 解码退出");
 }
 
 /**
  * 释放解码器所有内存
  */
 void AudioDecodec::release() {
-    LOGE(">>>>>>>AUDIO-DECODEC release start <<<<<<<<<<<<");
-    LOGE("开始释放编解码器 5");
-
+    LOGE("AudioDecodec release start");
     //1. 先释放父类,在释放子类
     onRelease();
-    LOGE("开始释放编解码器 8");
-
-    LOGE("开始释放编解码器 9");
     //释放解码格式的上下文
     if (avFormatContext)
         releaseFormatContext(&avFormatContext);
@@ -316,29 +349,22 @@ void AudioDecodec::release() {
     if (avCodecContext)
         releaseAVCodecContext(&avCodecContext);
 
-    LOGE("开始释放编解码器 10");
     //如果pcm buffer 存在就释放
     if (this->out_buffers) {
         free(out_buffers);
         out_buffers = NULL;
     }
-    LOGE("开始释放编解码器 11");
     if (url) {
-        delete(url);
+        delete (url);
         url = NULL;
     }
-    LOGE("开始释放编解码器 12");
     //释放队列
     if (avPacketQueue.queueSize() > 0) {
-        LOGE("开始释放编解码器 12——1");
         avPacketQueue.clearQueue();
-        LOGE("开始释放编解码器 12-2");
         avPacketQueue.delReleaseCallback();
-        LOGE("开始释放编解码器 12-3");
         avPacketQueue.setFlag(0);
     }
-    LOGE("开始释放编解码器 13");
-    LOGE(">>>>>>>AUDIO-DECODEC release stop <<<<<<<<<<<<");
+    LOGE("AudioDecodec release is ok");
 }
 
 void AudioDecodec::resume() {
@@ -357,6 +383,23 @@ void AudioDecodec::_seek(int number) {
         pthread_mutex_unlock(&seek_mutex);
     }
     LOGE("seek<<<<<<<<<");
+}
+
+
+/**
+ * 裁剪
+ * @param startTime
+ * @param endTime
+ * @param isPlayer
+ */
+void AudioDecodec::cutAudio2Pcm(int startTime, int endTime, int isPlayer) {
+    if (startTime >= 0 && endTime <= this->duration && duration != 0) {
+        if (status) {
+            this->cut_startTime = startTime;
+            this->cut_endTime = endTime;
+
+        }
+    }
 }
 
 

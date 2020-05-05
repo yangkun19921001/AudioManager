@@ -13,6 +13,8 @@ void updatePlayTimeInfo(BaseAudioChannel *audioPlayer);
 void updatePlayVoiceDBInfo(Native2JavaCallback *pCallback, int size);
 
 
+void updateOnPlayComplete(Native2JavaCallback *pCallback);
+
 void onReleasePCMCallback(AV_PCM_DATA **pcmData) {
     if (*pcmData && (*pcmData)->pcm) {
         free((*pcmData)->pcm);
@@ -146,7 +148,6 @@ void BaseAudioChannel::initOpenSLES(int sample_rate) {
     (*pcmBufferQueue)->RegisterCallback(pcmBufferQueue, pcmBufferCallBack, this);
     //获取播放状态接口
     (*pcmPlayerPlay)->SetPlayState(pcmPlayerPlay, SL_PLAYSTATE_PLAYING);
-    LOGE("initOpenSLES -> init is ok");
     this->status->isPlayThreadExit = true;
     pcmBufferCallBack(pcmBufferQueue, this);
     LOGE("initOpenSLES -> init is ok");
@@ -209,23 +210,37 @@ void pcmBufferCallBack(SLAndroidSimpleBufferQueueItf bf, void *pVoid) {
     if (audioPlayer->status && audioPlayer->status->exit)
         LOGE("looper  pcmBufferCallBack start");
     //拿到 PCM 原始数据
-    int size = audioPlayer->getData();
+    int size = audioPlayer->getPCMData();
 
     //对 PCM 做变速变调操作。
     size = audioPlayer->setSoundTouchData();
 
     if (size > 0 && audioPlayer->out_pcm_buffer && audioPlayer->status && !audioPlayer->status->exit) {
+
         //更新播放时间
         updatePlayTimeInfo(audioPlayer);
         //更新播放语音分贝值
         updatePlayVoiceDBInfo(audioPlayer->pCallback, audioPlayer->getVoiceDecibel(
-               audioPlayer->out_pcm_buffer, size));
+                audioPlayer->out_pcm_buffer, size));
         if (audioPlayer->pcmBufferQueue && audioPlayer->pcmBufferQueue)
             //放入缓存，开始播放声音
             (*audioPlayer->pcmBufferQueue)->Enqueue(audioPlayer->pcmBufferQueue, audioPlayer->out_pcm_buffer, size);
+
+        int time = (int)audioPlayer->total_time;
+        //判断是否播放完毕
+        if (audioPlayer && time == audioPlayer->duration) {
+            updateOnPlayComplete(audioPlayer->pCallback);
+        }
     }
     if (audioPlayer->status && audioPlayer->status->exit)
         LOGE("looper  pcmBufferCallBack exit");
+}
+
+void updateOnPlayComplete(Native2JavaCallback *pCallback) {
+    if (pCallback) {
+        pCallback->onComplete(CHILD_THREAD);
+    }
+
 }
 
 void updatePlayVoiceDBInfo(Native2JavaCallback *pCallback, int db) {
@@ -366,7 +381,7 @@ int BaseAudioChannel::setSoundTouchData() {
 
 //FILE *file = fopen("sdcard/ceshi2.pcm", "w");
 //fwrite(this->buffer, size, 1, file);
-int BaseAudioChannel::getData() {
+int BaseAudioChannel::getPCMData() {
     while (this->status && !this->status->exit) {
         if (this->status->seek) {
             av_usleep(5 * 1000);
@@ -506,7 +521,7 @@ int BaseAudioChannel::getVoiceDecibel(const unsigned char *pcmdata, size_t size)
 
 void BaseAudioChannel::release() {
 
-    LOGE("开始释放编解码器 15");
+    LOGE("BaseAudioChannel release start");
     //1. 设置停止状态
     if (pcmPlayerPlay) {
         (*pcmPlayerPlay)->SetPlayState(pcmPlayerPlay, SL_PLAYSTATE_STOPPED);
@@ -514,7 +529,6 @@ void BaseAudioChannel::release() {
         pcmPlayerPlay = 0;
     }
 
-    LOGE("开始释放编解码器 16");
     //2. 销毁播放器
     if (pcmPlayerObject) {
         (*pcmPlayerObject)->Destroy(pcmPlayerObject);
@@ -525,7 +539,6 @@ void BaseAudioChannel::release() {
         pcmChannelModePlay = NULL;
         pcmVolumePlay = NULL;
     }
-    LOGE("开始释放编解码器 17");
     //3. 销毁混音器
     if (outputMixObject) {
         (*outputMixObject)->Destroy(outputMixObject);
@@ -533,30 +546,25 @@ void BaseAudioChannel::release() {
         outputMixEnvironmentalReverb = NULL;
     }
 
-    LOGE("开始释放编解码器 18");
     //4. 销毁引擎
     if (engineObject) {
         (*engineObject)->Destroy(engineObject);
         engineObject = NULL;
         engineEngine = NULL;
     }
-    LOGE("开始释放编解码器 19");
     if (this->mBuffers && mBuffers[0]) {
         delete[] mBuffers[0];
         mBuffers[0] = NULL;
     }
 
-    LOGE("开始释放编解码器 20");
     if (soundTouch != NULL) {
         delete soundTouch;
         soundTouch = NULL;
     }
-    LOGE("开始释放编解码器 21");
     if (this->mBuffers && mBuffers[1]) {
         delete[] mBuffers[1];
         mBuffers[1] = NULL;
     }
-    LOGE("开始释放编解码器 22");
     if (pcmQueue.queueSize() > 0) {
         pcmQueue.clearQueue();
         pcmQueue.setFlag(0);
@@ -568,8 +576,7 @@ void BaseAudioChannel::release() {
         out_pcm_buffer = NULL;
     }
 
-    LOGE("开始释放编解码器 23");
-
+    LOGE("BaseAudioChannel release is ok");
 }
 
 

@@ -24,7 +24,7 @@ class BaseDecodec {
     /**
      * @param type
      */
-    typedef void (*DecodecFrameCallback)(int curTime, int outPCMSize, uint8_t *, int swrSize);
+    typedef void (*DecodecFrameCallback)(int curTime, int outPCMSize, uint8_t *, int size,int sampleRate,int channel,int bit);
 
     /**
      * @param 初始化成功，需要将音频源数据信息分发下去
@@ -76,6 +76,9 @@ public:
 
 
     void seek(int number);
+
+
+    int getStreamPlayDuration() { return this->duration; }
 
 
 /**

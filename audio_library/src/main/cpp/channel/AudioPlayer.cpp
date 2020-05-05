@@ -6,15 +6,12 @@
 #include "AudioPlayer.h"
 
 
-
 AudioPlayer::AudioPlayer(Status **pStatus, Native2JavaCallback *pCallback) : BaseAudioChannel(pStatus, pCallback) {
-
 
 
 }
 
 AudioPlayer::~AudioPlayer() {
-    LOGE("线程退出---》_play");
     pthread_exit(&this->playId);
 }
 
@@ -35,10 +32,14 @@ void AudioPlayer::pushPCM(int pcmSize, uint8_t *pcm, int curProgress, int totalP
     //FILE *file = fopen("sdcard/ceshi.pcm", "w");
     //fwrite(pcm, pcmSize, 1, file);
 //    AV_PCM_DATA *av_pcm_data = new AV_PCM_DATA();
+
+    //正在裁剪，并且设置了不能播放，将抛弃
+    if (this->status->isCut && !this->status->isCutPlayer)
+        return;
+
     AV_PCM_DATA *av_pcm_data = getAVPCMPack(pcmSize, curProgress, totalProgress, oldSize);
     memcpy(av_pcm_data->pcm, pcm, pcmSize);
     pcmQueue.push(av_pcm_data);
-
 
 
 }
@@ -46,13 +47,11 @@ void AudioPlayer::pushPCM(int pcmSize, uint8_t *pcm, int curProgress, int totalP
 void AudioPlayer::playThread(int sampleRate) {
     this->sampleRate = sampleRate;
     pthread_create(&playId, 0, _play, this);
-
 }
 
 void AudioPlayer::_seek() {
     if (pcmQueue.queueSize() > 0)
         pcmQueue.clearQueue();
-
     //将当前进度恢复默认
     this->total_time = 0;
     this->pre_tiem = 0;
@@ -80,7 +79,7 @@ void AudioPlayer::setChannel(int type) {
 }
 
 void AudioPlayer::setSpeed(float speed, bool isPitch) {
-    setSpeedAndPitch(speed,isPitch);
+    setSpeedAndPitch(speed, isPitch);
 }
 
 

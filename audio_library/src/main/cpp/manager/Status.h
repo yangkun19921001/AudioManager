@@ -35,6 +35,16 @@ public:
      * 播放线程是否可以退出
      */
     int isPlayThreadExit = false;
+
+    /**
+     * 是否 cut
+     */
+    int isCut = false;
+
+    /**
+     * 裁剪是否还播放
+     */
+    int isCutPlayer = false;
 };
 
 

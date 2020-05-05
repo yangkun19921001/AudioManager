@@ -21,6 +21,7 @@ import android.view.WindowManager
 import android.view.animation.Animation
 import android.view.animation.AnimationUtils
 import android.view.animation.LinearInterpolator
+import com.devyk.audio_library.callback.ICutCallback
 import java.util.*
 
 
@@ -37,7 +38,8 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
      */
     private val SOURCE =
         "http://0.wp.zp68.com:811/sub/filestores/2018/04/01//a6e2224850a9c65bd6cf99f785fe2c46.mp3?lx=xzwj&k=26779cd9492d42ecba7f"
-//    private val SOURCE = "${Environment.getExternalStorageDirectory()}${File.separator}test.mp3"
+    //    private val SOURCE = "${Environment.getExternalStorageDirectory()}${File.separator}test.mp3"
+    private val SOURCE_LIVE = "http://livestream.1766.today:1768/live1.mp3"
 
     /**
      * 动画
@@ -54,6 +56,11 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
      */
     var seekValue = -1;
 
+    /**
+     * 是否截取
+     */
+    var isCut = false;
+
 
     /**
      * 更新 UI
@@ -67,10 +74,14 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
             when (msg.what) {
                 0x1 -> {
                     if (msg.what == 0x1) {//播放进度
-                        tv_time.text = msg.obj as String
+
+
                         //设置百分比进度
                         var cur = msg.data.getInt("cur")
                         var total = msg.data.getInt("total")
+
+                        tv_time.text = msg.obj as String
+
                         if (total == 0) {
                             return
                         }
@@ -81,9 +92,7 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
                 0x2 -> {
                     tv_volume.text = msg.obj as String
                 }
-
                 0x3 -> {
-//                    audio_line_view.setVolume((msg.obj as String).toInt())
                     tv_db.text = "分贝:${msg?.obj as String}"
                 }
                 0x4 -> {
@@ -94,12 +103,10 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
                     animator?.cancel()
                     cd.clearAnimation()
                 }
-
                 0x5 -> {
                     NativeManager.stop()
                     autoTestPlay()
                 }
-
                 0x6 -> {
                     cd.startAnimation(animator)
                 }
@@ -112,7 +119,6 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
         val window = window
         window.clearFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS or WindowManager.LayoutParams.FLAG_TRANSLUCENT_NAVIGATION)
         window.getDecorView().setSystemUiVisibility(
@@ -123,20 +129,15 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
         window.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS)
         window.setStatusBarColor(Color.TRANSPARENT)
         window.setNavigationBarColor(Color.TRANSPARENT)
-
         setContentView(R.layout.activity_main)
+
+
         checkPermission()
         Log.e(TAG, "FFmpegVersion:${NativeManager.getFFmpegVersion()}")
-
         initViews();
-
         initClickListener()
         addListener()
         initAnim()
-
-
-//        autoTestPlay()
-
     }
 
     @SuppressLint("WrongConstant", "ResourceType")
@@ -153,6 +154,10 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
 
     private fun addListener() {
         NativeManager.addPlayCallback(object : IPlayerCallback {
+
+            /**
+             * 播放进度
+             */
             override fun onPlayProgress(cur: Int, total: Int) {
 //                Log.e(TAG, "执行线程:${{ Thread.currentThread().name }} onPlayProgress:cur:${cur} total:${total}")
                 sendMessage(0x1, cur, total)
@@ -163,28 +168,52 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
              */
             @SuppressLint("CheckResult")
             override fun onCallParpared() {
-                updateVolume(20)
+                updateVolume(50)
                 NativeManager.setSpeed(1.0f, true)
                 seekbar_volume.setProgress(NativeManager.getVolumePercent())
+
+                if (isCut)
+                    NativeManager.cutAudio2Pcm(20, 100, true);
                 NativeManager.play()
-//                audio_line_view.startWave()
                 audio_wave_view.executeAnim(true)
                 sendMessage(0x6);
 
             }
 
+            /**
+             * 开始播放了
+             */
             override fun onPlay() {
                 Log.e(TAG, "执行线程:${{ Thread.currentThread().name }} onPlay")
             }
 
-            override fun onStop() {
-                Log.e(TAG, "执行线程:${{ Thread.currentThread().name }} onStop")
+            /**
+             * 停止播放
+             */
+            override fun onPause() {
+                super.onPause()
             }
 
+            /**
+             * 播放完成
+             */
+            override fun onComplete() {
+                super.onComplete()
+                Log.e(TAG, "执行线程:${{ Thread.currentThread().name }} onStop")
+                NativeManager.stop();
+            }
+
+
+            /**
+             * 播放出错
+             */
             override fun onError(error: String) {
                 Log.e(TAG, "执行线程:${{ Thread.currentThread().name }} onError:${error}")
             }
 
+            /**
+             * native 释放成功
+             */
             override fun onRelease() {
                 Log.e(TAG, "执行线程:${{ Thread.currentThread().name }} onRelease")
                 sendMessage(0x4, 0, 0)
@@ -193,14 +222,29 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
 
             }
 
+            /**
+             * 分贝回调
+             */
             override fun onVoiceDBInfo(db: Int) {
                 sendMessage(0x3, 0, 0, db.toString())
-//                audio_line_view.setVolume(db)
 //                Log.e(TAG, "执行线程:${{ Thread.currentThread().name }} 分贝值:${db}")
-
-//
             }
         })
+
+        NativeManager.addCutPcmCallback(object : ICutCallback {
+            override fun onStart() {
+                Log.e(TAG, "start cut pcm")
+            }
+
+            override fun onComplete() {
+                Log.e(TAG, "stop cut pcm")
+                NativeManager.stop()
+            }
+
+            override fun onCutPcmData(byte: ByteArray, sampleRate: Int, channel: Int, bit: Int) {
+//                Log.e(TAG, "on cut pcmsize=  ${byte.size}")
+            }
+        });
 
         seekbar_volume.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
@@ -250,6 +294,7 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
         btn_speed_2_50.setOnClickListener(this)
         btn_speed_pitch_1_50.setOnClickListener(this)
         btn_speed__pitch_2_00.setOnClickListener(this)
+        btn_cut_pcm.setOnClickListener(this)
 
 
     }
@@ -259,11 +304,15 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
         obtain.what = id;
         when (id) {
             0x1 -> {
-                obtain.obj =
-                    "${TimeConverUtils.secdsToDateFormat(a, a)} / ${TimeConverUtils.secdsToDateFormat(
-                        b,
-                        b
-                    )}"
+                if (b <= 0)//说明是直播源
+                    obtain.obj =
+                        "${TimeConverUtils.secdsToDateFormat(a, a)} / Live"
+                else
+                    obtain.obj =
+                        "${TimeConverUtils.secdsToDateFormat(a, a)} / ${TimeConverUtils.secdsToDateFormat(
+                            b,
+                            b
+                        )}"
 
                 val bundle = Bundle();
                 bundle.putInt("cur", a);
@@ -315,7 +364,7 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
     override fun onClick(v: View?) {
         when (v?.id) {
             R.id.begin -> {
-                NativeManager.prepare(SOURCE)
+                NativeManager.prepare(SOURCE_LIVE)
 
             }
             R.id.pause -> {
@@ -356,6 +405,11 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
 
             R.id.btn_speed__pitch_2_00 -> {
                 NativeManager.setSpeed(2.00f, true)
+            }
+
+            R.id.btn_cut_pcm -> {
+                isCut = true
+                NativeManager.prepare(SOURCE)
             }
         }
     }

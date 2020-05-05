@@ -14,7 +14,8 @@ interface IPlayerCallback {
 
     fun onCallParpared() {}
     fun onPlay() {}
-    fun onStop() {}
+    fun onComplete() {}
+    fun onPause() {}
     fun onError(error: String) {}
     fun onRelease()
     fun onPlayProgress(cur: Int, total: Int)

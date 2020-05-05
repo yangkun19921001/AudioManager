@@ -6,6 +6,9 @@
 
 
 AudioPlayer *audioPlayer = NULL;
+Native2JavaCallback *mCallback = NULL;
+//全局执行的循环任务退出
+Status *mStatus = NULL;
 
 int audioSampleRate = 0;
 int audioTotalTime;
@@ -15,8 +18,6 @@ AudioControlManager::AudioControlManager(const char *url, JNIEnv *jniEnv, jobjec
     this->jobj = jobject1;
     this->mUrl = new char[strlen(url) + 1];
     strcpy(this->mUrl, url);
-
-
     pthread_mutex_init(&release_mutex, NULL);
 
 }
@@ -32,9 +33,15 @@ AudioControlManager::~AudioControlManager() {
  * @param outPCMSize
  * @param out_buffers
  */
-void DecodecFrameCallback(int curTime, int outPCMSize, uint8_t *out_buffers, int oldSize) {
+void DecodecFrameCallback(int curTime, int outPCMSize, uint8_t *out_buffers, int oldSize, int sampleRate, int channel,
+                          int bit) {
     if (audioPlayer)
         audioPlayer->pushPCM(outPCMSize, out_buffers, curTime, audioTotalTime, oldSize);
+
+    //将裁剪的音频 PCM 原始流回调给 Java 层
+    if (mCallback && mStatus && mStatus->isCut)
+        mCallback->onCutAudioPCMData(out_buffers, outPCMSize, sampleRate, channel, bit);
+
 };
 
 /**
@@ -55,7 +62,7 @@ void AudioStreamsInfoCallBack(int samRate, int totalTime) {
  * @param pVoid
  * @return
  */
-void  release(void *pVoid) {
+void release(void *pVoid) {
     auto *audioManager = static_cast<AudioControlManager *>(pVoid);
     audioManager->stop();
 }
@@ -149,7 +156,6 @@ void AudioControlManager::seek(int toNumber) {
         LOGE("seek error :%d", toNumber);
         return;
     }
-
     if (mAudioDecodec) {
         mAudioDecodec->_seek(toNumber);
     }
@@ -184,9 +190,12 @@ void AudioControlManager::setVolumePercent(int perent) {
  * @return
  */
 int AudioControlManager::getDuration() {
+    int duration = 0;
     if (mAudioPlayer)
-        return mAudioPlayer->getStreamPlayDuration();
-    return 0;
+        duration = mAudioPlayer->getStreamPlayDuration();
+    if (!duration && mAudioDecodec)
+        duration = mAudioDecodec->getStreamPlayDuration();
+    return duration;
 }
 
 void AudioControlManager::setChannel(int type) {
@@ -197,6 +206,8 @@ void AudioControlManager::setChannel(int type) {
 int AudioControlManager::getChannelMode() {
     if (mAudioPlayer)
         return mAudioPlayer->getChannelMode();
+
+    return 2;
 }
 
 
@@ -210,8 +221,7 @@ void AudioControlManager::setSpeed(float speed, bool isPitch) {
  * 停止播放
  */
 void AudioControlManager::stop() {
-    LOGE("AUDIO-DECODEC AudioControlManager stop ----1》");
-    LOGE("开始释放编解码器 2");
+    LOGE("开始释放编解码器");
     if (mStatus == NULL || mStatus->exit) {
         return;
     }
@@ -221,7 +231,6 @@ void AudioControlManager::stop() {
     if (!mAudioDecodec)
         return;
     int reCount = 0;
-    LOGE("开始释放编解码器 3");
     //保证所有循环都已退出
     while (!exit) {
         //释放播放模块
@@ -231,7 +240,7 @@ void AudioControlManager::stop() {
                 mAudioPlayer->release();
                 free(mAudioPlayer);
                 mAudioPlayer = NULL;
-                LOGE("AudioControlManager exit AudioPlayer");
+                LOGE("开始释放编解码器 exit AudioPlayer");
             }
         }
 
@@ -243,7 +252,7 @@ void AudioControlManager::stop() {
                 mAudioDecodec->release();
                 free(mAudioDecodec);
                 mAudioDecodec = NULL;
-                LOGE("AudioControlManager exit AudioDecodec");
+                LOGE("开始释放编解码器 exit AudioDecodec");
             }
         }
 
@@ -252,46 +261,63 @@ void AudioControlManager::stop() {
             mStatus->isDecodecFrameThreadExit &&
             mStatus->isReadFrameThreadExit) {
             exit = true;
-            LOGE("AudioControlManager exit all");
+            LOGE("开始释放编解码器 exit all");
         }
 
         //这一步相当于超时主动强制退出
         if (reCount++ > 1000) {
             exit = true;
-            LOGE("AudioControlManager qz exit all");
+            LOGE("开始释放编解码器 qz exit all");
             if (mAudioPlayer) {
                 mAudioPlayer->release();
                 free(mAudioPlayer);
                 mAudioPlayer = NULL;
-                LOGE("AudioControlManager exit AudioPlayer");
+                LOGE("开始释放编解码器 qz exit AudioPlayer");
             }
 
             if (mAudioDecodec && mAudioDecodec->initResult != 0) {
                 mAudioDecodec->release();
                 free(mAudioDecodec);
                 mAudioDecodec = NULL;
-                LOGE("AudioControlManager exit AudioDecodec");
+                LOGE("开始释放编解码器 qz exit AudioDecodec");
             }
         }
         av_usleep(1000 * 10);//暂停10毫秒
     }
 
 
-    LOGE("开始释放编解码器 26");
     //释放 Native2JavaCallback
     if (mCallback) {
         delete (mCallback);
         mCallback = NULL;
     }
 
-    LOGE("开始释放编解码器 27");
     //释放状态机制
     if (mStatus) {
         delete mStatus;
         mStatus = NULL;
     }
     pthread_mutex_unlock(&release_mutex);
-    LOGE("开始释放编解码器 28");
+    LOGE("开始释放编解码器 is ok");
+}
+
+/**
+ * 将读取出来的音频根据规定的时间裁剪为 PCM
+ * @param startTime
+ * @param endTime
+ * @param isPlayer
+ */
+void AudioControlManager::cutAudio2Pcm(jint startTime, jint endTime, jboolean isPlayer) {
+    if (mAudioDecodec) {
+        if (startTime >= 0 && endTime <= this->getDuration()) {
+            //开启裁剪
+            mStatus->isCut = true;
+            mStatus->isCutPlayer = isPlayer;
+            mAudioDecodec->cutAudio2Pcm(startTime, endTime, isPlayer);
+            //直接指定到解码的时间处
+            seek(startTime);
+        }
+    }
 }
 
 

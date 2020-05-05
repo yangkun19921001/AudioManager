@@ -50,6 +50,23 @@ public:
     /**计算缓冲大小*/
     int out_sample_rate;
 
+    /**
+     * 裁剪的开始和结束时间
+     */
+    int cut_startTime = 0;
+    int cut_endTime = 0;
+
+    /**
+     * 定义开始截取的标识，避免重复回调
+     */
+    int startCutTag = 0;
+
+    /**
+     * 定义结束截取的标识，避免重复回调
+     */
+    int endCutTag = 0;
+
+
     pthread_mutex_t seek_mutex;
 
 
@@ -108,7 +125,7 @@ public:
         //计算缓冲大小
         this->out_buffers_size = out_sample_rate * out_sample_size * out_channels;
         //分配缓冲内存
-        this-> out_buffers = (uint8_t *) (malloc(out_buffers_size));
+        this->out_buffers = (uint8_t *) (malloc(out_buffers_size));
     }
 
 
@@ -122,9 +139,9 @@ public:
     int initResult = 0;
 
 
-
-
     int *pLopper;
+
+    void cutAudio2Pcm(int startTime, int endTime, int isPlayer);
 };
 
 

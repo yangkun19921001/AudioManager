@@ -101,7 +101,7 @@ public:
 
     void notifyThreadLock();
 
-    int getData();
+    int getPCMData();
 
     int getCurVolume();
 

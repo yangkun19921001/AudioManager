@@ -1,6 +1,7 @@
 package com.devyk.audio_library.manager
 
 import com.devyk.audio_library.NativeMethods
+import com.devyk.audio_library.callback.ICutCallback
 import com.devyk.audio_library.callback.IPlayerCallback
 import com.tencent.mars.xlog.Log
 import java.util.concurrent.ArrayBlockingQueue
@@ -28,7 +29,7 @@ object NativeManager {
     /**
      * 线程池管理
      */
-    private var mThreadPoolService: ThreadPoolExecutor? = createThreadPool(20,100);
+    private var mThreadPoolService: ThreadPoolExecutor? = createThreadPool(10, 100);
 
 
     /**
@@ -47,7 +48,9 @@ object NativeManager {
      * 开始播放
      */
     public fun play() {
-        mThreadPoolService?.execute { mNativeMethods.start() }
+        mThreadPoolService?.execute {
+            mNativeMethods.start()
+        }
     }
 
     /**
@@ -132,5 +135,17 @@ object NativeManager {
         1L, TimeUnit.MILLISECONDS,
         LinkedBlockingQueue<Runnable>(maxPoolSize)
     )
+
+    /**
+     * 裁剪解码后的 PCM
+     */
+    fun cutAudio2Pcm(startTime: Int, endTime: Int, isPlayer: Boolean) {
+        mThreadPoolService?.execute { mNativeMethods.cutAudio2Pcm(startTime, endTime, isPlayer) }
+    }
+
+    /**
+     * 截取 PCM 回调
+     */
+    fun addCutPcmCallback(iCutPcmCallback: ICutCallback) = mNativeMethods.addCutPcmCallback(iCutPcmCallback)
 }
 

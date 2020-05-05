@@ -146,6 +146,7 @@ void BaseDecodec::seek(int number) {
     }
     if (number >= 0 && number <= number) {
         int64_t rel = number * AV_TIME_BASE;
+        avcodec_flush_buffers(this->avCodecContext);
         avformat_seek_file(this->avFormatContext, -1, INT64_MIN, rel, INT64_MAX, 0);
     }
 

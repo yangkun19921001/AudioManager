@@ -25,11 +25,13 @@ public:
 
     void onPlay(int threadTy);
 
-    void onStop(int threadTy);
+    void onComplete(int threadTy);
+
+    void onPause(int threadTy);
 
     void onRelease(int threadTy);
 
-    void onError(int threadTy,int errorCode);
+    void onError(int threadTy, int errorCode);
 
     JavaVM *javaVM = NULL;
     JNIEnv *jniEnv = NULL;
@@ -45,11 +47,16 @@ public:
      */
     jmethodID jmid_timeInfo;
     /**
-     * 相当于Java 层 暂停
+     * 相当于Java 层 播放完毕
      */
-    jmethodID jmid_stop;
+    jmethodID jmid_onComplete;
 
-    void toJavaMethod(int threadTy,jmethodID jmetId,int count,...);
+    /**
+     * 相当于Java 层 停止播放
+     */
+    jmethodID jmid_onPause;
+
+    void toJavaMethod(int threadTy, jmethodID jmetId, int count, ...);
 
 
     /**
@@ -71,6 +78,19 @@ public:
      * 分贝
      */
     jmethodID jmid_voiceDBInfo;
+
+    void onCutAudioPCMData(uint8_t *buffer, int pcmSize, int sampleRate, int channel, int bit);
+
+    /**
+     * 截取
+     */
+    jmethodID jmid_cut_pcm;
+    jmethodID jmid_cut_start;
+    jmethodID jmid_cut_onComplete;
+
+    void onCutStart(int i);
+
+    void onCutComplete(int i);
 };
 
 
