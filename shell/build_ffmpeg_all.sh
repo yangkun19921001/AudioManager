@@ -11,7 +11,7 @@ ANDROID_API=21
 
 
 #开始编译 在下面调用传入参数即可
-function build_ffmpeg
+function build_ffmpeg()
 {
 echo "开始编译 $PREFIX_CPU"
 echo "开始编译 $PREFIX"
