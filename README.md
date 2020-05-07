@@ -6,11 +6,11 @@
 
 - 对音频数据流的操作，比如裁剪，变声等。
 
-  
+  ![](https://devyk.oss-cn-qingdao.aliyuncs.com/blog/20200507172455.png)
 
-  ![](https://devyk.oss-cn-qingdao.aliyuncs.com/blog/20200505195250.gif)
+  更多介绍请移步博客详解 [音视频学习 (十二) 基于 FFmpeg + OpenSLES 实现音频万能播放器](https://juejin.im/post/5eb1880be51d454de7772152)
 
-  
+
 
 **功能点介绍:**
 
@@ -24,9 +24,9 @@
 | 声道切换                                                     | Yes      |
 | [变调变速]([SoundTouch](https://gitlab.com/soundtouch/soundtouch)) | Yes      |
 | 变声                                                         |          |
-| 裁剪音频输出 MP3/PCM 等格式                                  | Pcm-ok   |
+| 裁剪音频输出 PCM/MP3 等格式                                  | Yes      |
 | 边播边录制                                                   |          |
-| 音频编码为 AAC、MP3、WAV                                     |          |
+| 音频编码为 AAC、MP3(OK)、WAV                                 |          |
 |                                                              |          |
 |                                                              |          |
 
