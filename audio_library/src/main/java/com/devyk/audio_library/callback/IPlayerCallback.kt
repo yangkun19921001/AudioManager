@@ -12,7 +12,7 @@ package com.devyk.audio_library.callback
 
 interface IPlayerCallback {
 
-    fun onCallParpared() {}
+    fun onCallParpared(sampleRate: Int, channel: Int, bitRate: Long, duration: Long) {}
     fun onPlay() {}
     fun onComplete() {}
     fun onPause() {}

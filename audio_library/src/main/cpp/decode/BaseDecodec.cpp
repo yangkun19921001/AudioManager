@@ -120,7 +120,8 @@ int BaseDecodec::init() {
         this->audioStreamsInfoCallBack(this->audioSampleRate, avFormatContext->duration / AV_TIME_BASE);
     //走到这里说明一切正常，编解码器初始化成功
     if (callback)
-        this->callback->onCallParapred(CHILD_THREAD);
+        this->callback->onCallParapred(CHILD_THREAD, this->audioSampleRate, channels, this->avFormatContext->bit_rate,
+                                       avFormatContext->duration / AV_TIME_BASE);
     pthread_mutex_unlock(&init_mutex);
     return 1;
 }
@@ -144,12 +145,11 @@ void BaseDecodec::seek(int number) {
     if (duration <= 0) {
         return;
     }
-    if (number >= 0 && number <= number) {
+    if (number >= 0 && number <= duration) {
         int64_t rel = number * AV_TIME_BASE;
         avcodec_flush_buffers(this->avCodecContext);
         avformat_seek_file(this->avFormatContext, -1, INT64_MIN, rel, INT64_MAX, 0);
     }
-
 }
 
 

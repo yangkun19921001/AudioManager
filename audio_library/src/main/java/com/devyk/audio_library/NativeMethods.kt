@@ -3,7 +3,6 @@ package com.devyk.audio_library
 import com.devyk.audio_library.callback.ICutCallback
 import com.devyk.audio_library.callback.IPlayerCallback
 import com.devyk.audio_library.manager.NativeManager
-import com.tencent.mars.xlog.Log
 
 /**
  * <pre>
@@ -24,6 +23,13 @@ class NativeMethods {
 
     companion object {
         init {
+//            System.loadLibrary("avcodec")
+//            System.loadLibrary("avdevice")
+//            System.loadLibrary("avfilter")
+//            System.loadLibrary("avformat")
+//            System.loadLibrary("avutil")
+//            System.loadLibrary("swresample")
+//            System.loadLibrary("swscale")
             System.loadLibrary("audio")
         }
     }
@@ -104,12 +110,28 @@ class NativeMethods {
      */
     public external fun cutAudio2Pcm(startTime: Int, endTime: Int, isPlayer: Boolean);
 
+    /**
+     * 初始化lame,cpp中初始化采用lame默认参数配置
+     *
+     * @param sampleRate     ：采样率 -- 录音默认44100
+     * @param channelCount   ：通道数 -- 录音默认双通道2
+     * @param audioFormatBit ：位宽 -- 录音默认ENCODING_PCM_16BIT 16bit
+     * @param quality        ：MP3音频质量 0~9 其中0是最好，非常慢，9是最差  2=high(高)  5 = medium(中)  7=low(低)
+     * @param mp3Path        ：输出的 MP3 文件路径
+     */
+    public external fun encode2mp3_init(mp3Path: String, sampleRate: Int, channel: Int, bitRate: Long): Int
+
+    /**
+     * 开始编码，将 PCM 送入 native
+     */
+    public external fun encode2mp3(byte: ByteArray, out_mp3: ByteArray, size: Int): Int;
 
     /**
      * Native 层回调,说明准备好了
+     *  int audioSampleRate, int channels, int64_t bit_rate, int64_t duration
      */
-    public fun onCallParpared() {
-        mPlayerCallback?.onCallParpared()
+    public fun onCallParpared(sampleRate: Int, channel: Int, bitRate: Long, duration: Long) {
+        mPlayerCallback?.onCallParpared(sampleRate,channel,bitRate,duration)
 
     }
 

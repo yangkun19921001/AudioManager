@@ -8,6 +8,7 @@
 #include <Native2JavaCallback.h>
 #include <AudioDecodec.h>
 #include "AudioPlayer.h"
+#include "../encode/PCM_2_MP3_Decode.h"
 
 class AudioControlManager {
 
@@ -29,9 +30,7 @@ public:
     char *mUrl = NULL;
 
 
-
     int exit = 0;
-
 
 
     void prepare();
@@ -63,6 +62,10 @@ public:
     pthread_mutex_t release_mutex;
 
     void cutAudio2Pcm(jint startTime, jint endTime, jboolean isPlayer);
+
+    int encodeMP3init(const char *mp3Path, int sampleRate, int channels, uint64_t bitRate);
+
+    int encode2mp3(uint8_t *string,jbyte * array,jint i);
 };
 
 

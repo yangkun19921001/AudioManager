@@ -10,6 +10,8 @@ Native2JavaCallback *mCallback = NULL;
 //全局执行的循环任务退出
 Status *mStatus = NULL;
 
+PCM_2_MP3_Decode *pcm2Mp3Decode = NULL;
+
 int audioSampleRate = 0;
 int audioTotalTime;
 
@@ -297,6 +299,14 @@ void AudioControlManager::stop() {
         delete mStatus;
         mStatus = NULL;
     }
+
+    //停止编码 MP3
+    if (pcm2Mp3Decode) {
+        pcm2Mp3Decode->destory();
+        delete (pcm2Mp3Decode);
+        pcm2Mp3Decode = NULL;
+    }
+
     pthread_mutex_unlock(&release_mutex);
     LOGE("开始释放编解码器 is ok");
 }
@@ -318,6 +328,33 @@ void AudioControlManager::cutAudio2Pcm(jint startTime, jint endTime, jboolean is
             seek(startTime);
         }
     }
+}
+
+/**
+ * 初始化
+ * @param mp3Path
+ * @param sampleRate
+ * @param channels
+ * @param bitRate
+ */
+int AudioControlManager::encodeMP3init(const char *mp3Path, int sampleRate, int channels, uint64_t bitRate) {
+    int ret = 0;
+    if (!pcm2Mp3Decode) {
+        pcm2Mp3Decode = new PCM_2_MP3_Decode(mCallback);
+        ret = pcm2Mp3Decode->init(mp3Path, sampleRate, channels, bitRate);
+    }
+    return ret;
+}
+
+/**
+ * 开始编码为 MP3
+ * @param string
+ * @param size
+ */
+int AudioControlManager::encode2mp3(uint8_t *pcm, jbyte * out_mp3, jint size) {
+    if (pcm2Mp3Decode)
+        return   pcm2Mp3Decode->encode(pcm, out_mp3, size);
+    return 0;
 }
 
 

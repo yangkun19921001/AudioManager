@@ -147,5 +147,17 @@ object NativeManager {
      * 截取 PCM 回调
      */
     fun addCutPcmCallback(iCutPcmCallback: ICutCallback) = mNativeMethods.addCutPcmCallback(iCutPcmCallback)
+
+    /**
+     * 编码 mp3 初始化
+     */
+    fun encodeMP3init(mp3Path: String, sampleRate: Int, channel: Int, bitRate: Long): Int =
+        mNativeMethods.encode2mp3_init(mp3Path, sampleRate, channel, bitRate)
+
+    /**
+     * 将 PCM 送入编码器
+     */
+    fun encodeMp3(byteArray: ByteArray, out_mp3_: ByteArray, size: Int): Int =
+        mNativeMethods.encode2mp3(byteArray, out_mp3_, size)
 }
 

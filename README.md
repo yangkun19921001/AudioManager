@@ -34,6 +34,11 @@
 
 ## 版本记录
 
+### v1.0.2
+ - 集成 lame 具备 pcm 编码 MP3 能力
+ - 将 ffmpeg 静态库替换为动态库
+
+
 ### v1.0.1
 
  - AudioControlManager##stop 会导致 crash 等开发完了在解决->已解决。

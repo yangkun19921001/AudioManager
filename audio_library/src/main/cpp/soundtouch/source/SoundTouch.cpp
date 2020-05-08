@@ -67,7 +67,7 @@
 #include <memory.h>
 #include <math.h>
 #include <stdio.h>
-#include <Users/devyk/Data/Project/sample/github_code/audioplayer/audio_library/src/main/cpp/soundtouch/include/SoundTouch.h>
+#include "../include/SoundTouch.h"
 
 #include "TDStretch.h"
 #include "RateTransposer.h"

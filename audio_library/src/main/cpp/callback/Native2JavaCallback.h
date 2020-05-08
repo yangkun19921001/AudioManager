@@ -19,7 +19,7 @@ public:
 
     ~Native2JavaCallback();
 
-    void onCallParapred(int type);
+    void onCallParapred(int type, int i, int i1, int64_t i2, int64_t i3);
 
     void onCallTimeInfo(int threadType, int curTime, int totalTime);
 

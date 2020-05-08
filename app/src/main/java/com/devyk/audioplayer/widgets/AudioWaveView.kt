@@ -25,9 +25,9 @@ import android.icu.lang.UCharacter.GraphemeClusterBreak.T
  * </pre>
  *
  * 小细节:
- *  invalidate只会调onDraw方法且必须在UI线程中调用
- *  postInvalidate只会调onDraw方法，可以再UI线程中回调
- *  requestLayout会调onMeasure、onLayout和onDraw(特定条件下)方法
+ *  invalidate 只会调 onDraw 方法且必须在UI线程中调用
+ *  postInvalidate 只会调 onDraw 方法，可以再UI线程中回调
+ *  requestLayout 会调 onMeasure、onLayout 和 onDraw (特定条件下)方法
  */
 class AudioWaveView : View {
     private var paint: Paint? = null
@@ -50,13 +50,6 @@ class AudioWaveView : View {
     /** 条随机高度  */
     private var randomHeight: Int = 0
     private var random: Random? = null
-
-
-    private val handler = object : Handler() {
-        override fun handleMessage(msg: Message) {
-            invalidate()
-        }
-    }
 
 
     constructor(context: Context) : super(context) {
@@ -163,7 +156,6 @@ class AudioWaveView : View {
 
         if (isLooper)
             postInvalidateDelayed(200)
-//            handler.sendEmptyMessageDelayed(0, 200) //每间隔200毫秒发送消息刷新
     }
 
 }

@@ -18,7 +18,6 @@
 #define TRINITY_TAG "Native--->AudioManager-->"
 
 //是否打印日志
-#define LOG_DEBUG false
 
 /*
  * Android log priority values, in ascending priority order.

@@ -45,6 +45,8 @@ public:
      * 裁剪是否还播放
      */
     int isCutPlayer = false;
+
+
 };
 
 

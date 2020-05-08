@@ -104,6 +104,10 @@
                 android:id="@+id/btn_cut_pcm"
                 android:text="截取PCM"
                 style="@style/button"/>
+        <Button
+                android:id="@+id/btn_pcm_2_mp3"
+                android:text="pcm_2_mp3"
+                style="@style/button"/>
 
 
     </LinearLayout>

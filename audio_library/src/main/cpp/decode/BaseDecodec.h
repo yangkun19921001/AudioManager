@@ -24,7 +24,8 @@ class BaseDecodec {
     /**
      * @param type
      */
-    typedef void (*DecodecFrameCallback)(int curTime, int outPCMSize, uint8_t *, int size,int sampleRate,int channel,int bit);
+    typedef void (*DecodecFrameCallback)(int curTime, int outPCMSize, uint8_t *, int size, int sampleRate, int channel,
+                                         int bit);
 
     /**
      * @param 初始化成功，需要将音频源数据信息分发下去
@@ -144,6 +145,7 @@ public:
                 this->audioStreamIndex = i;
                 this->avAudioCodecParameters = (*pFormatCtx)->streams[i]->codecpar;
                 this->audioSampleRate = (*pFormatCtx)->streams[i]->codecpar->sample_rate;
+                this->channels = (*pFormatCtx)->streams[i]->codecpar->channels;
                 this->duration = (*pFormatCtx)->streams[i]->duration / AV_TIME_BASE;
                 this->time_base = (*pFormatCtx)->streams[i]->time_base;
                 LOGE("findAudioStream index--1 :%d", i);
@@ -363,6 +365,10 @@ public:
     }
 
     int *pLopper = NULL;
+    /**
+     * 该音频流的通道数量
+     */
+    int channels = 0;
 };
 
 

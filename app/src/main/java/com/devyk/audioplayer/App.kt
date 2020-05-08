@@ -85,7 +85,7 @@ class App : Application() {
         } finally {
             try {
                 if (reader != null) {
-                    reader!!.close()
+                    reader?.close()
                 }
             } catch (exception: IOException) {
                 exception.printStackTrace()

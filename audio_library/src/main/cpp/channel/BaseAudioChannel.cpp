@@ -53,6 +53,7 @@ void BaseAudioChannel::initOpenSLES(int sample_rate) {
     this->out_pcm_buffer = (uint8_t *) (av_malloc(sample_rate * 2 * 2));
     speedInit();
     SLresult result;
+  //1. 创建播放引擎
     result = slCreateEngine(&engineObject, 0, NULL, 0, NULL, NULL);
     if (SL_RESULT_SUCCESS != result) {
         LOGE("initOpenSLES ->1 error %d", result);
@@ -372,7 +373,6 @@ int BaseAudioChannel::setSoundTouchData() {
             finished = true;
             continue;
         }
-
         return num * 2 * 2;
     }
 
@@ -552,7 +552,7 @@ void BaseAudioChannel::release() {
         engineObject = NULL;
         engineEngine = NULL;
     }
-    if (this->mBuffers && mBuffers[0]) {
+    if ( mBuffers[0]) {
         delete[] mBuffers[0];
         mBuffers[0] = NULL;
     }
@@ -561,7 +561,7 @@ void BaseAudioChannel::release() {
         delete soundTouch;
         soundTouch = NULL;
     }
-    if (this->mBuffers && mBuffers[1]) {
+    if (mBuffers[1]) {
         delete[] mBuffers[1];
         mBuffers[1] = NULL;
     }

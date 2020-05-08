@@ -1,12 +1,10 @@
 package com.devyk.audioplayer
 
-import android.animation.AnimatorInflater
-import android.animation.ObjectAnimator
-import android.animation.ValueAnimator.INFINITE
 import android.annotation.SuppressLint
 import android.graphics.Color
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
+import android.os.Environment
 import android.os.Handler
 import android.os.Message
 import android.view.View
@@ -22,6 +20,10 @@ import android.view.animation.Animation
 import android.view.animation.AnimationUtils
 import android.view.animation.LinearInterpolator
 import com.devyk.audio_library.callback.ICutCallback
+import java.io.File
+import java.io.FileOutputStream
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
 import java.util.*
 
 
@@ -56,10 +58,19 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
      */
     var seekValue = -1;
 
+
     /**
      * 是否截取
      */
     var isCut = false;
+
+    /**
+     * 是否编码为 MP3
+     */
+    var isEncodeMp3 = false;
+
+    var byteArray: ByteArray? = null;
+    var out_mp3_write: FileOutputStream? = null
 
 
     /**
@@ -153,13 +164,85 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
     }
 
     private fun addListener() {
+        //添加播放回调
+        addPlayerCallback()
+        //添加裁剪回调
+        addCutCallback()
+        //添加声音改变回调
+        addSeekVolumeCallback()
+        //添加指定 seek 到某一播放时间处
+        addSeekCallback()
+    }
+
+    private fun addSeekCallback() {
+        seekbar_seek.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+
+                if (NativeManager.getStreanPlayDuration() > 0 && isSeek) {
+                    seekValue = NativeManager.getStreanPlayDuration() * progress / 100;
+                }
+            }
+
+            override fun onStartTrackingTouch(seekBar: SeekBar?) {
+                isSeek = true
+            }
+
+            override fun onStopTrackingTouch(seekBar: SeekBar?) {
+                isSeek = false
+                NativeManager.seek(seekValue);
+            }
+        });
+    }
+
+    private fun addSeekVolumeCallback() {
+        seekbar_volume.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                updateVolume(progress)
+            }
+
+            override fun onStartTrackingTouch(seekBar: SeekBar?) {
+            }
+
+            override fun onStopTrackingTouch(seekBar: SeekBar?) {
+            }
+        });
+    }
+
+    private fun addCutCallback() {
+        NativeManager.addCutPcmCallback(object : ICutCallback {
+            override fun onStart() {
+                Log.e(TAG, "start cut pcm")
+            }
+
+            override fun onComplete() {
+                Log.e(TAG, "stop cut pcm")
+                NativeManager.stop()
+                isCut = false
+                isEncodeMp3 = false;
+                out_mp3_write?.close()
+                out_mp3_write = null
+            }
+
+            override fun onCutPcmData(byte: ByteArray, sampleRate: Int, channel: Int, bit: Int) {
+                //将裁剪出来的 PCM 利用 lame 编码为 mp3
+                if (byteArray == null || byteArray?.size != (byte.size * 1.25 + 7200).toInt())
+                    byteArray = ByteArray((byte.size * 1.25 + 7200).toInt())
+
+                val encodeMp3 = NativeManager.encodeMp3(byte, byteArray!!, byte.size);
+                if (encodeMp3 > 0)//将 MP3 写入文件，其实 native 也可以做写入，看个人选择吧。
+                    out_mp3_write?.write(byteArray, 0, encodeMp3);
+            }
+        });
+    }
+
+    private fun addPlayerCallback() {
         NativeManager.addPlayCallback(object : IPlayerCallback {
 
             /**
              * 播放进度
              */
             override fun onPlayProgress(cur: Int, total: Int) {
-//                Log.e(TAG, "执行线程:${{ Thread.currentThread().name }} onPlayProgress:cur:${cur} total:${total}")
+                //                Log.e(TAG, "执行线程:${{ Thread.currentThread().name }} onPlayProgress:cur:${cur} total:${total}")
                 sendMessage(0x1, cur, total)
             }
 
@@ -167,16 +250,39 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
              * 初始化工作成功，可以开始播放了
              */
             @SuppressLint("CheckResult")
-            override fun onCallParpared() {
-                updateVolume(50)
+            override fun onCallParpared(
+                sampleRate: Int, //采样率
+                channel: Int, //通道啊
+                bitRate: Long, //码率
+                duration: Long //总长
+            ) {
+                updateVolume(20)
                 NativeManager.setSpeed(1.0f, true)
                 seekbar_volume.setProgress(NativeManager.getVolumePercent())
 
                 if (isCut)
                     NativeManager.cutAudio2Pcm(20, 100, true);
+
+
+                if (isEncodeMp3) {
+                    NativeManager.encodeMP3init(
+                        "${Environment.getExternalStorageDirectory()}${File.separator}audioplay/mp3/test.mp3",
+                        sampleRate,
+                        channel,
+                        32
+                    )
+
+                    var mp3File =
+                        File("${Environment.getExternalStorageDirectory()}${File.separator}audioplay/mp3/test.mp3");
+                    if (mp3File.exists())
+                        mp3File.delete()
+                    mp3File.createNewFile()
+                    out_mp3_write = FileOutputStream(mp3File);
+                }
                 NativeManager.play()
                 audio_wave_view.executeAnim(true)
                 sendMessage(0x6);
+
 
             }
 
@@ -227,54 +333,9 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
              */
             override fun onVoiceDBInfo(db: Int) {
                 sendMessage(0x3, 0, 0, db.toString())
-//                Log.e(TAG, "执行线程:${{ Thread.currentThread().name }} 分贝值:${db}")
+                //                Log.e(TAG, "执行线程:${{ Thread.currentThread().name }} 分贝值:${db}")
             }
         })
-
-        NativeManager.addCutPcmCallback(object : ICutCallback {
-            override fun onStart() {
-                Log.e(TAG, "start cut pcm")
-            }
-
-            override fun onComplete() {
-                Log.e(TAG, "stop cut pcm")
-                NativeManager.stop()
-            }
-
-            override fun onCutPcmData(byte: ByteArray, sampleRate: Int, channel: Int, bit: Int) {
-//                Log.e(TAG, "on cut pcmsize=  ${byte.size}")
-            }
-        });
-
-        seekbar_volume.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
-            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
-                updateVolume(progress)
-            }
-
-            override fun onStartTrackingTouch(seekBar: SeekBar?) {
-            }
-
-            override fun onStopTrackingTouch(seekBar: SeekBar?) {
-            }
-        });
-
-        seekbar_seek.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
-            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
-
-                if (NativeManager.getStreanPlayDuration() > 0 && isSeek) {
-                    seekValue = NativeManager.getStreanPlayDuration() * progress / 100;
-                }
-            }
-
-            override fun onStartTrackingTouch(seekBar: SeekBar?) {
-                isSeek = true
-            }
-
-            override fun onStopTrackingTouch(seekBar: SeekBar?) {
-                isSeek = false
-                NativeManager.seek(seekValue);
-            }
-        });
     }
 
     private fun updateVolume(progress: Int) {
@@ -295,8 +356,7 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
         btn_speed_pitch_1_50.setOnClickListener(this)
         btn_speed__pitch_2_00.setOnClickListener(this)
         btn_cut_pcm.setOnClickListener(this)
-
-
+        btn_pcm_2_mp3.setOnClickListener(this)
     }
 
     private fun sendMessage(id: Int, a: Int = 0, b: Int = 0, string: String = "") {
@@ -329,7 +389,6 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
             }
             0x4 -> {
                 obtain.obj = 0;
-
             }
 
             0x5 -> {
@@ -411,6 +470,12 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
                 isCut = true
                 NativeManager.prepare(SOURCE)
             }
+
+            R.id.btn_pcm_2_mp3 -> {
+                isCut = true
+                isEncodeMp3 = true;
+                NativeManager.prepare(SOURCE)
+            }
         }
     }
 
@@ -442,4 +507,6 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
         Log.e(TAG, "自动执行的定时时间为:${delayValue}");
         return delayValue
     }
+
+
 }

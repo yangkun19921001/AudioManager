@@ -12,7 +12,7 @@ Native2JavaCallback::Native2JavaCallback(JavaVM *vm, JNIEnv *env, jobject *jobj)
     this->jobj = env->NewGlobalRef(*jobj);
     jclass jcls = jniEnv->GetObjectClass(this->jobj);
     //准备播放
-    this->jmid_parpared = this->jniEnv->GetMethodID(jcls, "onCallParpared", "()V");
+    this->jmid_parpared = this->jniEnv->GetMethodID(jcls, "onCallParpared", "(IIJJ)V");
     //开始播放
     this->jmid_play = this->jniEnv->GetMethodID(jcls, "onPlay", "()V");
     //暂停播放
@@ -45,8 +45,10 @@ Native2JavaCallback::~Native2JavaCallback() {
     this->jniEnv = NULL;
 }
 
-void Native2JavaCallback::onCallParapred(int type) {
-    toJavaMethod(type, jmid_parpared, 0);
+
+void
+Native2JavaCallback::onCallParapred(int type, int audioSampleRate, int channels, int64_t bit_rate, int64_t duration) {
+    toJavaMethod(type, jmid_parpared, 4, audioSampleRate, channels, bit_rate, duration);
 
 }
 
@@ -126,23 +128,28 @@ void Native2JavaCallback::toJavaMethod(int threadType, jmethodID jmetId, int cou
             return;
         }
         va_list ap;//声明一个va_list变量
-        va_start(ap, jmetId);//初始化，第二个参数为最后一个确定的形参
-        int *p = new int[count];
-        for (int i = 0; i < count; i++) {
-            p[i] = va_arg(ap, int); //读取可变参数，的二个参数为可变参数的类型
-        }
-        va_end(ap);
+        va_start(ap, count);//初始化，第二个参数为最后一个确定的形参
+//        int *p = new int[count];
+//        for (int i = 0; i < count; i++) {
+//            p[i] = va_arg(ap, int); //读取可变参数，的二个参数为可变参数的类型
+//        }
+
         switch (count) {
             case 1:
-                env->CallVoidMethod(this->jobj, jmetId, p[0]);
+                env->CallVoidMethod(this->jobj, jmetId, va_arg(ap, int));
                 break;
             case 2:
-                env->CallVoidMethod(this->jobj, jmetId, p[0], p[1]);
+                env->CallVoidMethod(this->jobj, jmetId, va_arg(ap, int), va_arg(ap, int));
+                break;
+            case 4:
+                env->CallVoidMethod(this->jobj, jmetId,va_arg(ap, int), va_arg(ap, int), va_arg(ap, uint64_t), va_arg(ap, uint64_t));
                 break;
         }
         if (this->javaVM->DetachCurrentThread() != JNI_OK) {
             LOGE("DetachCurrentThread error");
         }
+
+        va_end(ap);
     }
 }
 
