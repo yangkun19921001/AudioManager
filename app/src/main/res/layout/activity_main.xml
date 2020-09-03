@@ -1,0 +1,201 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+                xmlns:app="http://schemas.android.com/apk/res-auto"
+                xmlns:audiolineview="http://schemas.android.com/apk/res-auto"
+                xmlns:tools="http://schemas.android.com/tools"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:background="@mipmap/icon_gray_bg"
+                tools:context=".MainActivity">
+
+
+    <com.devyk.audioplayer.widgets.AudioLineView
+            android:id="@+id/audio_line_view"
+            android:layout_marginTop="200dp"
+            android:visibility="gone"
+            audiolineview:maxVolume="100"
+            audiolineview:rectSpace="2dp"
+            audiolineview:rectWidth="5dp"
+            android:layout_width="match_parent"
+            audiolineview:voiceLine="@android:color/holo_red_dark"
+            android:layout_height="200dp"/>
+
+    <FrameLayout
+            android:layout_marginTop="65dp"
+            android:background="@mipmap/icon_chanpian"
+            android:layout_centerHorizontal="true"
+            android:id="@+id/cd_bg"
+            android:layout_height="200dp"
+            android:layout_width="200dp"
+    >
+
+        <com.devyk.audioplayer.widgets.CircleImageView
+                android:layout_gravity="center"
+                android:layout_centerHorizontal="true"
+                android:layout_width="130dp"
+                android:id="@+id/cd"
+                android:layout_height="130dp"/>
+
+
+    </FrameLayout>
+
+
+    <ImageView
+            android:src="@mipmap/icon_play_point"
+            android:layout_centerHorizontal="true"
+            android:layout_width="100dp"
+            android:id="@+id/iv_play_point"
+            android:layout_height="100dp"/>
+
+    <com.devyk.audioplayer.widgets.AudioWaveView
+            android:id="@+id/audio_wave_view"
+            android:layout_above="@+id/tv_db"
+            android:layout_marginLeft="10dp"
+            android:layout_width="20dp"
+            android:layout_height="20dp"/>
+
+    <TextView
+            android:layout_above="@+id/tv_time"
+            android:id="@+id/tv_db"
+            style="@style/textview"
+            android:text="分贝:00"/>
+
+    <TextView
+            android:layout_above="@+id/seekbar_seek"
+            android:id="@+id/tv_time"
+            style="@style/textview"
+            android:text="00:00/00:00"/>
+
+    <SeekBar
+            android:maxHeight="10dp"
+            android:minHeight="10dp"
+            android:layout_above="@+id/tv_volume"
+            android:id="@+id/seekbar_seek"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"/>
+
+    <TextView
+            android:layout_above="@+id/seekbar_volume"
+            android:id="@+id/tv_volume"
+            style="@style/textview"
+            android:text="音量"/>
+
+
+    <SeekBar
+            android:layout_above="@+id/ll_cut"
+            android:id="@+id/seekbar_volume"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:layout_marginBottom="10dp"
+    />
+
+
+    <LinearLayout
+            android:gravity="center_vertical"
+            android:layout_above="@+id/fun_track"
+            android:id="@+id/ll_cut"
+            android:orientation="horizontal"
+            android:layout_width="match_parent"
+            android:layout_height="50dp">
+
+        <Button
+                android:id="@+id/btn_cut_pcm"
+                android:text="截取PCM"
+                style="@style/button"/>
+        <Button
+                android:id="@+id/btn_pcm_2_mp3"
+                android:text="pcm_2_mp3"
+                style="@style/button"/>
+
+
+    </LinearLayout>
+
+    <LinearLayout
+            android:gravity="center_vertical"
+            android:layout_above="@+id/fun_speed"
+            android:id="@+id/fun_track"
+            android:orientation="horizontal"
+            android:layout_width="match_parent"
+            android:layout_height="50dp">
+
+        <Button
+                android:id="@+id/btn_left"
+                android:text="左声道"
+                style="@style/button"/>
+
+        <Button
+                android:id="@+id/btn_center"
+                android:text="立体声"
+                style="@style/button"/>
+
+        <Button
+                android:id="@+id/btn_right"
+                android:text="右声道"
+                style="@style/button"/>
+    </LinearLayout>
+
+
+    <LinearLayout
+            android:gravity="center_vertical"
+            android:layout_above="@+id/fun"
+            android:id="@+id/fun_speed"
+            android:orientation="horizontal"
+            android:layout_width="match_parent"
+            android:layout_height="50dp">
+
+        <Button
+                style="@style/button"
+                android:id="@+id/btn_speed_2_50"
+                android:text="2.50 速度播放"
+        />
+
+        <Button
+                style="@style/button"
+                android:id="@+id/btn_speed_pitch_1_50"
+                android:text="1.50 变调播放"
+        />
+        <Button
+                android:id="@+id/btn_speed__pitch_2_00"
+                android:text="2.0 变调变速播放"
+                style="@style/button"/>
+        <Button style="@style/button"
+                android:id="@+id/btn_speed_1_00"
+                android:text="1.0 正常播放声音"
+        />
+
+    </LinearLayout>
+
+    <LinearLayout
+            android:gravity="center_vertical"
+            android:layout_marginBottom="40dp"
+            android:id="@+id/fun"
+            android:layout_alignParentBottom="true"
+            android:orientation="horizontal"
+            android:layout_width="match_parent"
+            android:layout_height="50dp">
+
+        <Button
+                android:id="@+id/begin"
+                android:text="开始"
+                style="@style/button"/>
+        <Button
+                android:id="@+id/stop"
+                android:text="停止"
+                style="@style/button"/>
+
+        <Button
+                android:id="@+id/pause"
+                android:text="暂停"
+                style="@style/button"/>
+        <Button
+                android:id="@+id/resume"
+                android:text="播放"
+                style="@style/button"/>
+
+
+    </LinearLayout>
+
+
+</RelativeLayout>
